@@ -29,7 +29,7 @@ def iter_summaries(root: Path, manifest_label: str):
         if not data:
             continue
         benchmark = data.get("benchmark")
-        model_profile = data.get("model_profile", {}).get("profile", "unspecified")
+        model_profile = data.get("model_profile", {}).get("profile", "qwen")
         for judge, defenses in data.get("summary", {}).items():
             for defense, metrics in defenses.items():
                 yield {

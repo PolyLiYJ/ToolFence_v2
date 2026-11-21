@@ -51,7 +51,7 @@ def freeze(query, observed_text, grant_tool, bindings, stage, call, remaining=1)
     tool = call["tool"]
     args = call.get("arguments", {})
     labels, _ = compute_provenance(query, observed_text, args)
-    sources = {k: labels[k] for k in args if k in labels}
+    sources = {k: labels.get(k, "model") for k in args}
     evidence = {}
     for key, source in sources.items():
         if source == "user":
@@ -65,6 +65,10 @@ def freeze(query, observed_text, grant_tool, bindings, stage, call, remaining=1)
         for v in values:
             if v not in evidence[source]:
                 evidence[source].append(v)
+    # Every binding source must exist in evidence; an empty list means the
+    # argument has no host-grounded value and fails the source tier.
+    for src in bindings.values():
+        evidence.setdefault(src, [])
     return dict(
         origin="approved_runtime_grant",
         grant=dict(tool=grant_tool, bindings=bindings, stage=stage),
@@ -96,11 +100,19 @@ def proposal_raw(client, query, context, catalog, max_tokens=512):
     if resp.model != MODEL:
         raise RuntimeError("unexpected agent model: " + str(resp.model))
     text = resp.choices[0].message.content or ""
+    parsed = None
     m = re.search(r"\[.*\]", text, re.DOTALL)
-    if not m:
-        return []
+    if m:
+        parsed = json.loads(m.group(0))
+    else:
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            obj = json.loads(m.group(0))
+            parsed = obj if "tool" in obj else obj.get("calls", obj.get("tools", []))
+    if not isinstance(parsed, list):
+        parsed = [parsed] if isinstance(parsed, dict) else []
     calls = []
-    for item in json.loads(m.group(0)):
+    for item in parsed:
         if isinstance(item, dict) and isinstance(item.get("arguments"), dict):
             calls.append({"tool": str(item.get("tool", "")), "arguments": item["arguments"]})
     return calls

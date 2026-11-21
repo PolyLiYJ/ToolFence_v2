@@ -5,7 +5,8 @@ import json
 from typing import Any, Mapping
 
 ALLOWED_EFFECTS = {
-    "read", "local_compute", "communication", "external_write", "financial", "delete", "account_update",
+    "read", "local_compute", "communication", "reservation", "external_write",
+    "financial", "delete", "credential_change", "unknown",
 }
 ALLOWED_OPERATIONS = {
     "observe", "compute", "communicate", "reserve", "create", "update",

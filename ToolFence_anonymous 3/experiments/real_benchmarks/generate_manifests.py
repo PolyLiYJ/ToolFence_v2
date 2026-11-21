@@ -60,7 +60,7 @@ KIND_SEMANTICS = {
     "delete": ("delete", "delete", "benchmark_resource", True, True, False, True, "previous_read_output"),
     "financial": ("financial", "financial", "payment", True, True, False, True, "user_literal"),
     "reserve": ("financial", "reserve", "reservation", True, True, False, True, "user_literal"),
-    "account_update": ("account_update", "credential_change", "account", True, False, False, True, "user_literal"),
+    "account_update": ("credential_change", "credential_change", "account", True, False, False, True, "user_literal"),
 }
 
 

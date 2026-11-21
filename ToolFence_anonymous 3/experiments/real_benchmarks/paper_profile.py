@@ -20,12 +20,29 @@ from toolfence.transaction_net import (
     HostToolBinding,
     ObjectRef,
     Receipt,
-    RestrictedAdapter,
     TaskContract,
     TransactionNet,
 )
 
 from . import config
+
+
+class ReviewedAdapter:
+    """Exact reviewed argument adapter without name-based type heuristics."""
+
+    def __init__(self, tool: str, fields: frozenset[str]):
+        self.tool = tool
+        self.fields = frozenset(fields)
+        self.evidence_kind = None
+        self.cost_field = None
+
+    def validate(self, bindings: Mapping[str, Any], arguments: Mapping[str, Any]) -> int:
+        if set(bindings) != self.fields or set(arguments) != self.fields:
+            raise PermissionError("Exact reviewed argument set required")
+        if any(bindings[key] != arguments[key] for key in self.fields):
+            raise PermissionError("Invocation differs from reviewed argument bindings")
+        return 1
+
 
 OPERATIONAL_PARAMETERS = {
     "limit", "offset", "page", "page_size", "format", "max_results",
@@ -221,9 +238,7 @@ def build_paper_profile(
         else:
             task = str(uuid4())
             budget = str(uuid4())
-            ADAPTERS[adapter] = RestrictedAdapter(
-                adapter, frozenset(args.keys()), evidence_kind=None
-            )
+            ADAPTERS[adapter] = ReviewedAdapter(adapter, frozenset(args.keys()))
             net.issue(TaskContract(task, budget, adapter, args))
             net.configure(
                 task,
