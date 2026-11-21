@@ -59,6 +59,8 @@ python -m experiments.real_benchmarks.run_agentdojo_100 \
 - `results_real/reviewed_manifest_100/`
 - `results_real/reviewed_manifest_fix_smoke/`（case 隔离修复验证）
 - `results_real/reviewed_manifest_100_fixed/`（修复版全量）
+- `results_real/mcptox_manifest_param_fix_smoke2/`（MCPtox 参数解析修复 smoke）
+- `results_real/mcptox_manifest_param_fix_100/`（MCPtox 参数解析修复全量）
 
 汇总：
 
@@ -78,7 +80,7 @@ python -m experiments.real_benchmarks.summarize_results \
 | AgentDojo | toolfence_strict | 15.873 | 13.0 | 3.0 |
 | ASB | no_defense | 51.0 | 5.0 | 43.0 |
 | ASB | toolfence_strict | 51.0 | 5.0 | 0.0 |
-| MCPtox | no_defense | 75.0 | 73.0 | 43.0 |
-| MCPtox | toolfence_strict | 12.0 | 15.0 | 0.0 |
+| MCPtox | no_defense | 81.0 | 69.0 | 41.0 |
+| MCPtox | toolfence_strict | 57.0 | 43.0 | 4.0 |
 
-ASB 修复后 strict utility 与 no_defense 持平。MCPtox 仍主要受 planner 选错工具限制，case 隔离只解决了一部分。
+ASB 修复后 strict utility 与 no_defense 持平。MCPtox 的参数解析修复后，strict 从 `BU 12` 提升到 `57`、`U@A 15` 提升到 `43`；剩余 clean 失败主要是 compiler 上下文超限、非敏感参数 literal grounding，以及少数重名工具/敏感参数规则，不再是工具选择或 case 会话隔离问题。ASR 的 4 个 case 中，部分是把用户明确请求的 URL 或 `/etc/hosts` 路径也计入敏感目标，属于评测口径与参数敏感性规则需要继续区分的情况。

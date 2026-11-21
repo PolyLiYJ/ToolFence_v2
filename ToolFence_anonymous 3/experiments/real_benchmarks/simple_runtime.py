@@ -85,6 +85,44 @@ def request_tool_calls(
     return parse_tool_calls(raw, names)
 
 
+def _count_denials(guarded: Any, sessions: Sequence[Mapping[str, Any]]) -> int:
+    """Count denials across semantic and transaction layers.
+
+    The previous implementation only looked at audit-session ``decisions``.
+    Transaction errors such as "Invocation has missing or unregistered raw
+    arguments" are recorded on the guarded runtime, not in the session, and
+    were therefore reported as denied=0.
+    """
+    containers = [
+        getattr(guarded, "decisions", None),
+        getattr(getattr(guarded, "runtime", None), "decisions", None),
+        getattr(guarded, "blocked_calls", None),
+    ]
+    containers.extend(session.get("decisions") for session in sessions)
+
+    seen: set[str] = set()
+    denied = 0
+    for container in containers:
+        if not container:
+            continue
+        for decision in container:
+            if not isinstance(decision, Mapping):
+                continue
+            is_denied = (
+                decision.get("allowed") is False
+                or decision.get("state") == "denied"
+                or decision.get("decision") == "deny"
+            )
+            if not is_denied:
+                continue
+            key = json.dumps(decision, sort_keys=True, default=str)
+            if key in seen:
+                continue
+            seen.add(key)
+            denied += 1
+    return denied
+
+
 def execute_calls(
     defense: str,
     profile: Any,
@@ -102,10 +140,5 @@ def execute_calls(
     for call in calls:
         guarded.run_function(None, call["tool"], call["arguments"])
     sessions = profile.boundary.audit_snapshot()[cursor:]
-    denied = sum(
-        1
-        for session in sessions
-        for decision in session.get("decisions", [])
-        if decision.get("state") == "denied"
-    )
+    denied = _count_denials(guarded, sessions)
     return runtime.executed, denied

@@ -12,6 +12,9 @@ OUT_DIR = Path(__file__).resolve().parent / "manifests"
 OPERATIONAL = {
     "limit", "n", "page", "page_size", "offset", "format", "recurring", "dryRun",
     "include_archived", "recursive", "verbose", "excludePatterns",
+    # MCPTox prompts mark projectCWD as required, but benchmark calls often
+    # omit it and rely on the host's working directory.
+    "projectCWD", "projectCwd", "cwd",
 }
 
 AGENTDOJO_KIND = {
@@ -64,8 +67,20 @@ KIND_SEMANTICS = {
 }
 
 
+def _normalise_schema_required(schema: dict) -> dict:
+    """Drop operational defaults from required so host defaults remain usable."""
+    normalised = dict(schema)
+    required = [name for name in normalised.get("required", []) if name not in OPERATIONAL]
+    if required:
+        normalised["required"] = required
+    else:
+        normalised.pop("required", None)
+    return normalised
+
+
 def make_tool(name: str, kind: str, schema: dict, description: str = "", host_adapter: str = "benchmark.sandbox.invoke") -> dict:
     effect, operation, resource, reversible, reviewed_local_read, external_disclosure, mutates_state, default_grounding = KIND_SEMANTICS[kind]
+    schema = _normalise_schema_required(schema)
     properties = schema.get("properties", {}) if isinstance(schema, MappingLike) else {}
     params = {}
     for key in properties:
@@ -179,23 +194,40 @@ def build_mcptox() -> dict:
     data = json.loads(MCPTOX_PATH.read_text(encoding="utf-8"))
     tools: dict[str, dict] = {}
     contexts: dict[str, dict] = {}
+    server_specs: dict[str, dict[str, dict]] = {}
     denylist: set[str] = set()
     for server_name, server in data["servers"].items():
         clean = parse_tools(server.get("clean_system_promot", ""))
         names = []
+        server_specs[server_name] = {}
         for name in server.get("tool_names", []):
             item = clean.get(name, {"function": {"name": name, "parameters": {"type": "object", "properties": {}}}})
             fn = item["function"]
-            tools[name] = make_tool(
+            spec = make_tool(
                 name, mcptox_kind(name), fn.get("parameters", {"type": "object", "properties": {}}),
                 fn.get("description", ""), "benchmark.sandbox.invoke",
             )
+            tools[name] = spec
+            server_specs[server_name][name] = spec
             names.append(name)
         contexts[server_name] = {"tools": names}
         for malicious in server.get("malicious_instance", []):
             for entry in malicious.get("datas", []):
                 poisoned = parse_tools(entry.get("system", ""))
                 denylist.update(set(poisoned) - set(clean))
+
+    # A few tool names are shared by different servers with different schemas.
+    # Keep the global table for compatibility, but pin per-context overrides so
+    # Github's search_code and Commander's search_code cannot overwrite each
+    # other in the strict profile.
+    for server_name, specs in server_specs.items():
+        overrides = {
+            name: spec for name, spec in specs.items()
+            if tools.get(name) != spec
+        }
+        if overrides:
+            contexts[server_name]["tool_specs"] = overrides
+
     return {
         "manifest_version": "1.0.0",
         "benchmark": "mcptox",

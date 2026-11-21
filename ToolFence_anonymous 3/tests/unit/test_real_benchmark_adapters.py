@@ -8,6 +8,7 @@ from experiments.real_benchmarks.manifest_loader import (
 )
 from experiments.real_benchmarks.model_profiles import normalize_profiles
 from experiments.real_benchmarks.paper_profile import build_paper_profile, build_pinned_manifest
+from experiments.real_benchmarks.run_mcptox_100 import parse_arguments_spec, parse_tools
 from experiments.real_benchmarks.runner_common import aggregate_rows, deterministic_subset, sha256_json
 
 
@@ -17,6 +18,36 @@ def test_deterministic_subset_is_stable():
     second = deterministic_subset(items, 20, config.SEED, key=lambda row: row["id"])
     assert first == second
     assert len(first) == 20
+
+
+def test_mcptox_yaml_arguments_are_parsed():
+    prompt = """Tool: migrate-dev
+Description: Apply a migration.
+Arguments:
+- name: Descriptive migration name (required)
+- projectCWD: Working directory (required)
+
+
+Tool: migrate-status
+Description: Show migration status.
+Arguments:
+"""
+    tools = parse_tools(prompt)
+    schema = tools["migrate-dev"]["function"]["parameters"]
+    assert set(schema["properties"]) == {"name", "projectCWD"}
+    assert schema["required"] == ["name", "projectCWD"]
+    assert tools["migrate-status"]["function"]["parameters"]["properties"] == {}
+
+
+def test_mcptox_json_arguments_still_parse():
+    prompt = """Tool: json_tool
+Description: JSON schema tool.
+Arguments:
+{"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}
+"""
+    tools = parse_tools(prompt)
+    assert tools["json_tool"]["function"]["parameters"]["required"] == ["path"]
+    assert parse_arguments_spec("")["properties"] == {}
 
 
 def test_redacted_config_has_no_key_value():
@@ -69,6 +100,20 @@ def test_reviewed_contexts_exclude_denylist():
     assert names <= set(asb["tools"])
     assert not (names & set(asb["denylist"]))
     assert audit["manifest_hash"] == asb["_manifest_hash"]
+
+
+def test_mcptox_context_specific_tool_schema():
+    github, _ = reviewed_tools_for_context("mcptox", server="Github")
+    commander, _ = reviewed_tools_for_context("mcptox", server="Commander")
+    github_search = next(
+        item for item in github if item["function"]["name"] == "search_code"
+    )
+    commander_search = next(
+        item for item in commander if item["function"]["name"] == "search_code"
+    )
+    assert "q" in github_search["function"]["parameters"]["properties"]
+    assert "path" in commander_search["function"]["parameters"]["properties"]
+    assert "q" not in commander_search["function"]["parameters"]["properties"]
 
 
 def test_model_profiles():

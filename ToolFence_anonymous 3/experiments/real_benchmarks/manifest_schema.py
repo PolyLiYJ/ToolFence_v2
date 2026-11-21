@@ -31,6 +31,31 @@ def manifest_hash(data: Mapping[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _validate_tool(name: str, spec: Any) -> None:
+    if not isinstance(spec, Mapping):
+        raise ValueError(f"tool {name} must be an object")
+    missing_fields = REQUIRED_TOOL_FIELDS - set(spec)
+    if missing_fields:
+        raise ValueError(f"tool {name} missing fields: {sorted(missing_fields)}")
+    if spec["name"] != name:
+        raise ValueError(f"tool key/name mismatch: {name} != {spec['name']}")
+    if spec["effect"] not in ALLOWED_EFFECTS:
+        raise ValueError(f"tool {name} invalid effect: {spec['effect']}")
+    if spec["operation"] not in ALLOWED_OPERATIONS:
+        raise ValueError(f"tool {name} invalid operation: {spec['operation']}")
+    if spec["grounding_rule"] not in ALLOWED_GROUNDING_RULES:
+        raise ValueError(f"tool {name} invalid grounding_rule: {spec['grounding_rule']}")
+    params = spec.get("parameters") or {}
+    if not isinstance(params, Mapping):
+        raise ValueError(f"tool {name} parameters must be an object")
+    for param, rule in params.items():
+        if not isinstance(rule, Mapping):
+            raise ValueError(f"tool {name}.{param} must be an object")
+        grounding = rule.get("grounding_rule", spec["grounding_rule"])
+        if grounding not in ALLOWED_GROUNDING_RULES:
+            raise ValueError(f"invalid grounding_rule for {name}.{param}: {grounding}")
+
+
 def validate_manifest(data: Any) -> None:
     if not isinstance(data, Mapping):
         raise ValueError("manifest must be a JSON object")
@@ -47,36 +72,24 @@ def validate_manifest(data: Any) -> None:
         raise ValueError("contexts must be a non-empty object")
     denylist = set(data.get("denylist") or [])
     for name, spec in data["tools"].items():
-        if not isinstance(spec, Mapping):
-            raise ValueError(f"tool {name} must be an object")
-        missing_fields = REQUIRED_TOOL_FIELDS - set(spec)
-        if missing_fields:
-            raise ValueError(f"tool {name} missing fields: {sorted(missing_fields)}")
-        if spec["name"] != name:
-            raise ValueError(f"tool key/name mismatch: {name} != {spec['name']}")
-        if spec["effect"] not in ALLOWED_EFFECTS:
-            raise ValueError(f"tool {name} invalid effect: {spec['effect']}")
-        if spec["operation"] not in ALLOWED_OPERATIONS:
-            raise ValueError(f"tool {name} invalid operation: {spec['operation']}")
-        if spec["grounding_rule"] not in ALLOWED_GROUNDING_RULES:
-            raise ValueError(f"tool {name} invalid grounding_rule: {spec['grounding_rule']}")
-        params = spec.get("parameters") or {}
-        if not isinstance(params, Mapping):
-            raise ValueError(f"tool {name} parameters must be an object")
-        for param, rule in params.items():
-            if not isinstance(rule, Mapping):
-                raise ValueError(f"tool {name}.{param} must be an object")
-            grounding = rule.get("grounding_rule", spec["grounding_rule"])
-            if grounding not in ALLOWED_GROUNDING_RULES:
-                raise ValueError(f"invalid grounding_rule for {name}.{param}: {grounding}")
-    overlap = denylist & set(data["tools"])
-    if overlap:
-        raise ValueError(f"denylist overlaps reviewed tools: {sorted(overlap)}")
+        _validate_tool(name, spec)
+
+    context_names: set[str] = set()
     for context, spec in data["contexts"].items():
         if not isinstance(spec, Mapping) or "tools" not in spec:
             raise ValueError(f"context {context} must contain tools")
+        overrides = spec.get("tool_specs") or {}
+        if not isinstance(overrides, Mapping):
+            raise ValueError(f"context {context} tool_specs must be an object")
+        for name, tool_spec in overrides.items():
+            _validate_tool(name, tool_spec)
+            context_names.add(name)
         for name in spec["tools"]:
-            if name not in data["tools"]:
+            if name not in data["tools"] and name not in overrides:
                 raise ValueError(f"context {context} references unknown tool {name}")
             if name in denylist:
                 raise ValueError(f"context {context} references denied tool {name}")
+
+    overlap = denylist & (set(data["tools"]) | context_names)
+    if overlap:
+        raise ValueError(f"denylist overlaps reviewed tools: {sorted(overlap)}")

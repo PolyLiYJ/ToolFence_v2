@@ -42,6 +42,74 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+_PARAM_SPEC_RE = re.compile(r"^- ([A-Za-z_][A-Za-z0-9_.-]*):\s*(.*)$")
+
+
+def _empty_arguments_schema() -> dict:
+    return {"type": "object", "properties": {}}
+
+
+def parse_arguments_spec(text: str) -> dict:
+    """Parse MCPTox's textual Arguments block into JSON Schema.
+
+    MCPTox mostly uses a YAML-like list:
+
+        Arguments:
+        - name: No description (required)
+        - projectCWD: No description (required)
+
+    A few tools use JSON instead.  The previous parser only accepted JSON and
+    silently collapsed every other tool to an empty schema, which made the
+    strict profile reject otherwise valid calls.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return _empty_arguments_schema()
+
+    if raw.startswith("{"):
+        try:
+            parsed, _ = json.JSONDecoder().raw_decode(raw)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, dict):
+            return parsed
+
+    descriptions: dict[str, list[str]] = {}
+    order: list[str] = []
+    current: str | None = None
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("###"):
+            continue
+        match = _PARAM_SPEC_RE.match(stripped)
+        if match:
+            current = match.group(1)
+            if current not in descriptions:
+                descriptions[current] = []
+                order.append(current)
+            descriptions[current].append(match.group(2).strip())
+        elif current is not None:
+            # Multi-line descriptions continue until the next "- key:" line.
+            descriptions[current].append(stripped)
+
+    if not order:
+        return _empty_arguments_schema()
+
+    properties: dict[str, dict] = {}
+    required: list[str] = []
+    for name in order:
+        description = " ".join(part for part in descriptions[name] if part).strip()
+        properties[name] = {"type": "string"}
+        if description:
+            properties[name]["description"] = description
+        if "(required)" in description.lower():
+            required.append(name)
+    schema: dict = {"type": "object", "properties": properties}
+    if required:
+        schema["required"] = required
+    return schema
+
+
 def parse_tools(system_prompt: str) -> dict[str, dict]:
     tools: dict[str, dict] = {}
     pattern = re.compile(r"(?:^|\n)Tool:\s*(\S+)\n(.*?)(?=\nTool:|\Z)", flags=re.DOTALL)
@@ -49,16 +117,13 @@ def parse_tools(system_prompt: str) -> dict[str, dict]:
         name = match.group(1).strip()
         block = match.group(2)
         description = ""
-        arguments = {"type": "object", "properties": {}}
+        arguments = _empty_arguments_schema()
         desc_match = re.search(r"Description:\s*(.*?)(?=\nArguments:|\Z)", block, flags=re.DOTALL)
         if desc_match:
             description = desc_match.group(1).strip()
-        arg_match = re.search(r"Arguments:\s*(\{.*?\})\s*(?:\n###|\Z)", block, flags=re.DOTALL)
+        arg_match = re.search(r"Arguments:\s*(.*?)(?=\n###|\Z)", block, flags=re.DOTALL)
         if arg_match:
-            try:
-                arguments = json.loads(arg_match.group(1))
-            except ValueError:
-                pass
+            arguments = parse_arguments_spec(arg_match.group(1))
         tools[name] = {
             "type": "function",
             "function": {"name": name, "description": description, "parameters": arguments},
@@ -152,7 +217,7 @@ def build_case_profile(
     scoped_catalog = [
         item for item in server_catalog if item["function"]["name"] in names
     ]
-    semantics = reviewed_semantics("mcptox", sorted(names))
+    semantics = reviewed_semantics("mcptox", sorted(names), server=case["server"])
     ledger = output_dir / "ledgers" / (
         f"mcptox_{judge_name}_{defense}_{case['case_id'].replace(':', '_')}_{condition}.sqlite"
     )

@@ -26,6 +26,50 @@ def _contexts_for(benchmark: str, manifest: dict[str, Any]) -> dict[str, Any]:
     return manifest["contexts"]
 
 
+def _context_key(
+    contexts: dict[str, Any],
+    *,
+    suite: str | None = None,
+    server: str | None = None,
+    agent: str | None = None,
+    allow_missing: bool = False,
+) -> str | None:
+    keys = [value for value in (suite, server, agent, "default") if value]
+    context_key = next((key for key in keys if key in contexts), None)
+    if context_key is None:
+        context_key = "default" if "default" in contexts else None
+    if context_key is None and not allow_missing:
+        raise ValueError(f"No reviewed manifest context: {suite=} {server=} {agent=}")
+    return context_key
+
+
+def _bounded_description(value: Any, name: str, limit: int = 600) -> str:
+    text = str(value or name).strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "..."
+
+
+def _context_specs(
+    manifest: dict[str, Any],
+    context_key: str,
+    names: list[str],
+) -> dict[str, dict[str, Any]]:
+    """Resolve tool names to context-specific specs.
+
+    MCPTox has a few names shared by different servers with different schemas
+    (for example Github and Commander both expose ``search_code``).  A context
+    can carry ``tool_specs`` overrides for those collisions.
+    """
+    overrides = manifest["contexts"][context_key].get("tool_specs") or {}
+    specs: dict[str, dict[str, Any]] = {}
+    for name in names:
+        spec = overrides.get(name) or manifest["tools"].get(name)
+        if spec is not None:
+            specs[name] = spec
+    return specs
+
+
 def reviewed_tools_for_context(
     benchmark: str,
     *,
@@ -35,21 +79,19 @@ def reviewed_tools_for_context(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     manifest = load_reviewed_manifest(benchmark)
     contexts = _contexts_for(benchmark, manifest)
-    keys = [value for value in (suite, server, agent, "default") if value]
-    context_key = next((key for key in keys if key in contexts), None)
-    if context_key is None:
-        context_key = "default" if "default" in contexts else None
-    if context_key is None:
-        raise ValueError(f"No reviewed manifest context for {benchmark}: {suite=} {server=} {agent=}")
+    context_key = _context_key(contexts, suite=suite, server=server, agent=agent)
     names = list(contexts[context_key]["tools"])
+    specs = _context_specs(manifest, context_key, names)
     catalog = []
     for name in names:
-        spec = manifest["tools"][name]
+        spec = specs.get(name)
+        if spec is None:
+            continue
         catalog.append({
             "type": "function",
             "function": {
-                "name": name,
-                "description": spec.get("description", name),
+                "name": spec.get("name", name),
+                "description": _bounded_description(spec.get("description"), name),
                 "parameters": spec.get("schema", {"type": "object", "properties": {}}),
             },
         })
@@ -62,11 +104,29 @@ def reviewed_tools_for_context(
         "unknown_tool_policy": manifest["unknown_tool_policy"],
         "tool_count": len(catalog),
         "tool_names": names,
+        "context_override_count": len(contexts[context_key].get("tool_specs") or {}),
         "denylist_count": len(manifest.get("denylist", [])),
     }
     return catalog, audit
 
 
-def reviewed_semantics(benchmark: str, names: list[str]) -> dict[str, dict[str, Any]]:
+def reviewed_semantics(
+    benchmark: str,
+    names: list[str],
+    *,
+    suite: str | None = None,
+    server: str | None = None,
+    agent: str | None = None,
+) -> dict[str, dict[str, Any]]:
     manifest = load_reviewed_manifest(benchmark)
-    return {name: manifest["tools"][name] for name in names if name in manifest["tools"]}
+    contexts = _contexts_for(benchmark, manifest)
+    context_key = _context_key(
+        contexts, suite=suite, server=server, agent=agent, allow_missing=True
+    )
+    if context_key is None:
+        return {
+            name: manifest["tools"][name]
+            for name in names
+            if name in manifest["tools"]
+        }
+    return _context_specs(manifest, context_key, names)
