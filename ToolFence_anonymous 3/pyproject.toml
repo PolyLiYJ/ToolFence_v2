@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "toolfence-anonymous"
+version = "0.3.0"
+description = "Anonymous source release of provenance-aware dynamic tool authorization"
+requires-python = ">=3.10"
+dependencies = ["pydantic>=2"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+llm = ["openai>=1"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["toolfence", "toolfence.*"]

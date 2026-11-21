@@ -1,0 +1,15 @@
+__pycache__/
+.DS_Store
+*.pyc
+*.sqlite
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+output/
+data/
+results_real/
+*.log
+Gemini-Key.txt
+.codebuddy/
+*.pdf
