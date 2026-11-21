@@ -136,6 +136,39 @@ def run_one(backends, profile, case, defense, condition):
     }
 
 
+def build_case_profile(
+    backends,
+    output_dir: Path,
+    judge_name: str,
+    defense: str,
+    case: dict,
+    condition: str,
+):
+    """Build a fresh boundary scoped to the current MCPtox server clean tools."""
+    names = set(case["clean_tools"])
+    server_catalog, server_audit = reviewed_tools_for_context(
+        "mcptox", server=case["server"]
+    )
+    scoped_catalog = [
+        item for item in server_catalog if item["function"]["name"] in names
+    ]
+    semantics = reviewed_semantics("mcptox", sorted(names))
+    ledger = output_dir / "ledgers" / (
+        f"mcptox_{judge_name}_{defense}_{case['case_id'].replace(':', '_')}_{condition}.sqlite"
+    )
+    audit = dict(server_audit)
+    audit["case_scope"] = sorted(names)
+    audit["case_id"] = case["case_id"]
+    audit["condition"] = condition
+    return build_paper_profile(
+        backends,
+        scoped_catalog,
+        ledger_path=str(ledger),
+        reviewed_semantics=semantics,
+        manifest_audit=audit,
+    )
+
+
 def run_profile(profile_name, output_dir, all_cases, subset, judges, seed):
     model_audit = apply_model_profile(profile_name)
     rows: list[dict] = []
@@ -143,26 +176,16 @@ def run_profile(profile_name, output_dir, all_cases, subset, judges, seed):
     for judge_name in judges:
         for defense in ("no_defense", "toolfence_strict"):
             backends = build_backends(judge_name)
-            profile = None
             if defense == "toolfence_strict":
-                catalog_by_name: dict[str, dict] = {}
                 manifest_audits = []
                 for server in sorted({case["server"] for case in subset}):
-                    server_catalog, server_audit = reviewed_tools_for_context("mcptox", server=server)
+                    _, server_audit = reviewed_tools_for_context("mcptox", server=server)
                     manifest_audits.append(server_audit)
-                    for item in server_catalog:
-                        catalog_by_name[item["function"]["name"]] = item
-                catalog = list(catalog_by_name.values())
-                semantics = reviewed_semantics("mcptox", [item["function"]["name"] for item in catalog])
-                ledger = output_dir / "ledgers" / f"mcptox_{judge_name}_{defense}.sqlite"
-                profile = build_paper_profile(
-                    backends,
-                    catalog,
-                    ledger_path=str(ledger),
-                    reviewed_semantics=semantics,
-                    manifest_audit={"contexts": manifest_audits},
-                )
-                audits[f"{judge_name}:{defense}"] = profile.audit
+                audits[f"{judge_name}:{defense}"] = {
+                    "case_isolation": "fresh_boundary_per_case_condition",
+                    "tool_scope": "current_case_clean_tools_only",
+                    "manifest_contexts": manifest_audits,
+                }
             checkpoint = Checkpoint(
                 output_dir / "checkpoints" / f"mcptox_{judge_name}_{defense}.jsonl"
             )
@@ -171,6 +194,11 @@ def run_profile(profile_name, output_dir, all_cases, subset, judges, seed):
                     key = f"{judge_name}:{defense}:{case['case_id']}:{condition}"
                     cached = checkpoint.get(key)
                     if cached is None:
+                        profile = None
+                        if defense == "toolfence_strict":
+                            profile = build_case_profile(
+                                backends, output_dir, judge_name, defense, case, condition,
+                            )
                         row = run_one(backends, profile, case, defense, condition)
                         row.update({"judge": judge_name, "defense": defense})
                         checkpoint.add(key, row)

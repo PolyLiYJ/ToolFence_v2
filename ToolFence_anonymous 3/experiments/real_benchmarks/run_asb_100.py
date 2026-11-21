@@ -76,6 +76,41 @@ def run_one(backends, profile, benchmark, case, defense, condition):
     }
 
 
+def build_case_profile(
+    backends,
+    output_dir: Path,
+    judge_name: str,
+    defense: str,
+    case,
+    condition: str,
+    catalog: list[dict],
+    semantics: dict[str, dict],
+    manifest_audit: dict,
+):
+    """Build a fresh, case-scoped boundary for one ASB case+condition."""
+    names = {tool.name for tool in case.normal_tools}
+    scoped_catalog = [
+        item for item in catalog if item["function"]["name"] in names
+    ]
+    scoped_semantics = {
+        name: semantics[name] for name in names if name in semantics
+    }
+    ledger = output_dir / "ledgers" / (
+        f"asb_{judge_name}_{defense}_{case.case_id.replace(':', '_')}_{condition}.sqlite"
+    )
+    audit = dict(manifest_audit)
+    audit["case_scope"] = sorted(names)
+    audit["case_id"] = case.case_id
+    audit["condition"] = condition
+    return build_paper_profile(
+        backends,
+        scoped_catalog,
+        ledger_path=str(ledger),
+        reviewed_semantics=scoped_semantics,
+        manifest_audit=audit,
+    )
+
+
 def run_profile(profile_name, output_dir, benchmark, subset, judges, seed):
     model_audit = apply_model_profile(profile_name)
     rows: list[dict] = []
@@ -83,19 +118,19 @@ def run_profile(profile_name, output_dir, benchmark, subset, judges, seed):
     for judge_name in judges:
         for defense in ("no_defense", "toolfence_strict"):
             backends = build_backends(judge_name)
-            profile = None
+            catalog = []
+            semantics = {}
+            manifest_audit = {}
             if defense == "toolfence_strict":
                 catalog, manifest_audit = reviewed_tools_for_context("asb")
-                semantics = reviewed_semantics("asb", [item["function"]["name"] for item in catalog])
-                ledger = output_dir / "ledgers" / f"asb_{judge_name}_{defense}.sqlite"
-                profile = build_paper_profile(
-                    backends,
-                    catalog,
-                    ledger_path=str(ledger),
-                    reviewed_semantics=semantics,
-                    manifest_audit=manifest_audit,
+                semantics = reviewed_semantics(
+                    "asb", [item["function"]["name"] for item in catalog]
                 )
-                audits[f"{judge_name}:{defense}"] = profile.audit
+                audits[f"{judge_name}:{defense}"] = {
+                    "case_isolation": "fresh_boundary_per_case_condition",
+                    "tool_scope": "current_case_normal_tools_only",
+                    "manifest_audit": manifest_audit,
+                }
             checkpoint = Checkpoint(
                 output_dir / "checkpoints" / f"asb_{judge_name}_{defense}.jsonl"
             )
@@ -104,6 +139,12 @@ def run_profile(profile_name, output_dir, benchmark, subset, judges, seed):
                     key = f"{judge_name}:{defense}:{case.case_id}:{condition}"
                     cached = checkpoint.get(key)
                     if cached is None:
+                        profile = None
+                        if defense == "toolfence_strict":
+                            profile = build_case_profile(
+                                backends, output_dir, judge_name, defense,
+                                case, condition, catalog, semantics, manifest_audit,
+                            )
                         row = run_one(backends, profile, benchmark, case, defense, condition)
                         row.update({"judge": judge_name, "defense": defense})
                         checkpoint.add(key, row)

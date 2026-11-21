@@ -3,10 +3,11 @@ from toolfence.semantic.schema import ParameterSemantic, ToolSemantic
 from experiments.real_benchmarks import config
 from experiments.real_benchmarks.manifest_loader import (
     load_reviewed_manifest,
+    reviewed_semantics,
     reviewed_tools_for_context,
 )
 from experiments.real_benchmarks.model_profiles import normalize_profiles
-from experiments.real_benchmarks.paper_profile import build_pinned_manifest
+from experiments.real_benchmarks.paper_profile import build_paper_profile, build_pinned_manifest
 from experiments.real_benchmarks.runner_common import aggregate_rows, deterministic_subset, sha256_json
 
 
@@ -73,3 +74,25 @@ def test_reviewed_contexts_exclude_denylist():
 def test_model_profiles():
     assert normalize_profiles("both") == ["qwen", "llama70b"]
     assert normalize_profiles("qwen") == ["qwen"]
+
+
+def test_profile_bundle_exposes_case_session_reset(tmp_path):
+    class _Backends:
+        compiler = object()
+        judge = object()
+
+        @staticmethod
+        def judge_snapshot():
+            return {"request_count": 0}
+
+    catalog, audit = reviewed_tools_for_context("asb")
+    semantics = reviewed_semantics("asb", [item["function"]["name"] for item in catalog])
+    profile = build_paper_profile(
+        _Backends(),
+        catalog,
+        ledger_path=str(tmp_path / "session.sqlite"),
+        reviewed_semantics=semantics,
+        manifest_audit=audit,
+    )
+    assert callable(profile.new_session)
+    profile.new_session()

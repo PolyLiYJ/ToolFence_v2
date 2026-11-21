@@ -76,6 +76,8 @@ def run_profile(profile_name: str, output_dir: Path, subset, judges, size, seed)
                     key = f"{label}:clean:{user_id}"
                     cached = checkpoint.get(key)
                     if cached is None:
+                        if profile is not None:
+                            profile.new_session()
                         row = run_clean(
                             pipeline, suite, user_id, profile,
                             {"request_count": backends.judge_snapshot()["request_count"]},
@@ -93,6 +95,8 @@ def run_profile(profile_name: str, output_dir: Path, subset, judges, size, seed)
                     key = f"{label}:attack:{case_id}"
                     cached = checkpoint.get(key)
                     if cached is None:
+                        if profile is not None:
+                            profile.new_session()
                         row = run_attack(
                             pipeline,
                             suite,

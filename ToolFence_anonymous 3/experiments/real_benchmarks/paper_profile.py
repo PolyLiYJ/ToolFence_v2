@@ -181,6 +181,7 @@ class PaperProfileBundle:
     trusted_catalog: list[dict[str, Any]]
     pinned_manifest: ToolManifest
     audit: dict[str, Any]
+    new_session: Callable[[], None]
 
 
 def build_paper_profile(
@@ -306,6 +307,11 @@ def build_paper_profile(
             for tool in catalog
         ],
     }
+    def new_session() -> None:
+        """Drop task bindings so the next case gets fresh task UUIDs and stages."""
+        with lock:
+            issued.clear()
+
     return PaperProfileBundle(
         boundary=boundary,
         compiler=compiler,
@@ -315,4 +321,5 @@ def build_paper_profile(
         trusted_catalog=catalog,
         pinned_manifest=manifest,
         audit=audit,
+        new_session=new_session,
     )

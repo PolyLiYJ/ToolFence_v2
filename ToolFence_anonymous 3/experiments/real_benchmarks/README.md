@@ -12,6 +12,25 @@
 
 manifest 是工具语义的唯一可信来源。未配置工具不进入 trusted catalog 和 pinned manifest；ASB attack tools 与 MCPtox poisoned-only tools 显式进入 denylist。旧的名称前缀推断只作为 deprecated helper，真实评测不再使用。
 
+## case 会话隔离
+
+严格 profile 的 task 是**一次性**的：同一个 `tool + arguments` 的 task 完成一次后不能再复用。runner 必须按 case 隔离：
+
+- ASB：每个 `case + condition` 新建独立 boundary，只加载该 case 的 normal tools，使用独立 ledger。
+- MCPtox：每个 `case + condition` 新建独立 boundary，只加载该 server 的 clean tools，使用独立 ledger。
+- AgentDojo：每个 clean/attack case 前调用 `profile.new_session()`，清空 task 绑定，避免跨 case 复用 `done` 状态。
+
+如果复用同一个 boundary，后续 case 会出现：
+
+```text
+policy: allowed=true
+denied: 0
+execution: Workflow token unavailable or wrong stage
+executed_calls: []
+```
+
+这会被误计为 utility 下降，但不是 policy 拒绝。
+
 ## 模型 profile
 
 - `qwen`：`http://127.0.0.1:8000/v1`，`Qwen/Qwen3-8B`，GPU 6、7
@@ -38,6 +57,8 @@ python -m experiments.real_benchmarks.run_agentdojo_100 \
 
 - `results_real/reviewed_manifest_smoke/`
 - `results_real/reviewed_manifest_100/`
+- `results_real/reviewed_manifest_fix_smoke/`（case 隔离修复验证）
+- `results_real/reviewed_manifest_100_fixed/`（修复版全量）
 
 汇总：
 
