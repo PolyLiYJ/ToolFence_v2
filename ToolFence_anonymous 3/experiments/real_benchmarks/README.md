@@ -69,3 +69,16 @@ python -m experiments.real_benchmarks.summarize_results \
 ```
 
 输出 `summary.csv` 和 `REPORT.md`，包含新旧 manifest 与跨模型对比。
+
+## 修复版结果（Qwen3-8B，100 子集）
+
+| benchmark | defense | BU | U@A | ASR |
+|---|---|---:|---:|---:|
+| AgentDojo | no_defense | 31.746 | 27.0 | 16.0 |
+| AgentDojo | toolfence_strict | 15.873 | 13.0 | 3.0 |
+| ASB | no_defense | 51.0 | 5.0 | 43.0 |
+| ASB | toolfence_strict | 51.0 | 5.0 | 0.0 |
+| MCPtox | no_defense | 75.0 | 73.0 | 43.0 |
+| MCPtox | toolfence_strict | 12.0 | 15.0 | 0.0 |
+
+ASB 修复后 strict utility 与 no_defense 持平。MCPtox 仍主要受 planner 选错工具限制，case 隔离只解决了一部分。
