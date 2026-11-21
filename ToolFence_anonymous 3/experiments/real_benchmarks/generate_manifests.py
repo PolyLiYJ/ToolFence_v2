@@ -48,19 +48,19 @@ AGENTDOJO_KIND = {
 
 KIND_SEMANTICS = {
     "read": ("read", "observe", "benchmark_data", False, False, False, False, "user_goal"),
-    "web_read": ("read", "web_read", "web", False, False, False, False, "user_literal"),
+    "web_read": ("read", "observe", "web", False, False, False, False, "user_literal"),
     "local_compute": ("local_compute", "compute", "benchmark_data", False, False, False, False, "user_goal"),
     "communicate": ("communication", "communicate", "message", True, True, False, True, "user_literal"),
-    "communicate_email": ("communication", "send_email", "email", True, True, False, True, "user_literal"),
-    "invite": ("communication", "invite", "collaboration", True, True, False, True, "user_literal"),
-    "web_post": ("external_write", "web_post", "web", True, True, False, True, "user_literal"),
+    "communicate_email": ("communication", "communicate", "email", True, True, False, True, "user_literal"),
+    "invite": ("communication", "communicate", "collaboration", True, True, False, True, "user_literal"),
+    "web_post": ("external_write", "update", "web", True, True, False, True, "user_literal"),
     "create": ("external_write", "create", "benchmark_resource", True, True, False, True, "user_literal"),
-    "write": ("external_write", "write", "benchmark_resource", True, True, False, True, "user_literal"),
+    "write": ("external_write", "update", "benchmark_resource", True, True, False, True, "user_literal"),
     "update": ("external_write", "update", "benchmark_resource", True, True, False, True, "user_literal"),
     "delete": ("delete", "delete", "benchmark_resource", True, True, False, True, "previous_read_output"),
-    "financial": ("financial", "transfer", "payment", True, True, False, True, "user_literal"),
+    "financial": ("financial", "financial", "payment", True, True, False, True, "user_literal"),
     "reserve": ("financial", "reserve", "reservation", True, True, False, True, "user_literal"),
-    "account_update": ("account_update", "update", "account", True, False, False, True, "user_literal"),
+    "account_update": ("account_update", "credential_change", "account", True, False, False, True, "user_literal"),
 }
 
 

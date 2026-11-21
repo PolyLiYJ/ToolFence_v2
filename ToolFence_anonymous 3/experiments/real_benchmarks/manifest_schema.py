@@ -8,8 +8,8 @@ ALLOWED_EFFECTS = {
     "read", "local_compute", "communication", "external_write", "financial", "delete", "account_update",
 }
 ALLOWED_OPERATIONS = {
-    "observe", "compute", "communicate", "send_email", "send_message", "create", "update", "write",
-    "delete", "transfer", "reserve", "publish", "invite", "web_read", "web_post",
+    "observe", "compute", "communicate", "reserve", "create", "update",
+    "delete", "financial", "credential_change", "unknown",
 }
 ALLOWED_GROUNDING_RULES = {
     "user_literal", "user_goal", "previous_read_output", "host_constant", "operational_default", "none",

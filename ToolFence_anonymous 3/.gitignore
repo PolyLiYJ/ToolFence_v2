@@ -7,9 +7,3 @@ __pycache__/
 dist/
 build/
 output/
-data/
-results_real/
-*.log
-Gemini-Key.txt
-.codebuddy/
-*.pdf

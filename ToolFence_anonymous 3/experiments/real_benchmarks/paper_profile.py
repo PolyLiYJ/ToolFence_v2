@@ -15,7 +15,15 @@ from toolfence.guarded_net import GuardedTransactionNet, TransitionRule
 from toolfence.judge.judge import RuntimeJudge
 from toolfence.semantic.architect import SemanticPolicyCompiler
 from toolfence.semantic.schema import ParameterSemantic, ToolManifest, ToolSemantic
-from toolfence.transaction_net import HostToolBinding, ObjectRef, Receipt, TaskContract, TransactionNet
+from toolfence.transaction_net import (
+    ADAPTERS,
+    HostToolBinding,
+    ObjectRef,
+    Receipt,
+    RestrictedAdapter,
+    TaskContract,
+    TransactionNet,
+)
 
 from . import config
 
@@ -188,23 +196,23 @@ def build_paper_profile(
         return Receipt(operation, "committed")
 
     def reviewer(proposal: Mapping[str, Any]) -> bool:
-        if proposal.get("tool") != "benchmark.sandbox.invoke":
-            return False
-        if not proposal.get("host_contract_verified"):
-            return False
-        arguments = proposal.get("arguments", {})
         task = str(proposal.get("task", ""))
         with lock:
             record = issued.get(task)
+        arguments = proposal.get("raw_arguments", proposal.get("arguments", {}))
         return bool(
             record
-            and record["canonical"] == arguments
+            and str(proposal.get("tool", "")).startswith("reviewed.")
+            and record["adapter"] == proposal.get("tool")
+            and dict(arguments) == record["arguments"]
             and record["revision"] == revision
         )
 
     def issue_contract(tool: str, arguments: Mapping[str, Any]) -> tuple[str, HostToolBinding]:
-        canonical = canonical_for_call(tool, arguments, revision)
+        args = dict(arguments)
+        canonical = canonical_for_call(tool, args, revision)
         digest = canonical["arguments_digest"]
+        adapter = f"reviewed.{tool}.{digest}"
         key = f"{tool}:{digest}"
         with lock:
             existing = issued.get(key)
@@ -213,22 +221,29 @@ def build_paper_profile(
         else:
             task = str(uuid4())
             budget = str(uuid4())
-            net.issue(TaskContract(task, budget, "benchmark.sandbox.invoke", canonical))
+            ADAPTERS[adapter] = RestrictedAdapter(
+                adapter, frozenset(args.keys()), evidence_kind=None
+            )
+            net.issue(TaskContract(task, budget, adapter, args))
             net.configure(
                 task,
                 initial_stage="ready",
-                rules={"benchmark.sandbox.invoke": TransitionRule("ready", "done")},
+                rules={adapter: TransitionRule("ready", "done")},
                 revision=revision,
                 expires=time.time() + 600.0,
             )
             with lock:
-                issued[key] = {"task": task, "canonical": canonical, "revision": revision}
+                record = {
+                    "task": task, "adapter": adapter, "arguments": args, "revision": revision,
+                }
+                issued[key] = record
+                issued[task] = record
         binding = HostToolBinding(
             task,
-            "benchmark.sandbox.invoke",
-            lambda args, canonical=canonical: canonical,
+            adapter,
+            lambda raw, args=args: dict(raw),
             receipt,
-            frozenset(canonical),
+            frozenset(args),
         )
         return task, binding
 
@@ -264,8 +279,8 @@ def build_paper_profile(
         "profile": "toolfence_paper_strict_adapted",
         "policy_revision": revision,
         "host_actor": actor,
-        "adapter": "benchmark.sandbox.invoke",
-        "adapter_scope": "exact_argument_digest_only_generic_benchmark_adapter",
+        "adapter": "reviewed.<tool>.<sha256>",
+        "adapter_scope": "dynamic_reviewed_exact_argument_adapter",
         "classification_source": classification_source,
         "manifest_audit": dict(manifest_audit or {}),
         "trusted_catalog": [

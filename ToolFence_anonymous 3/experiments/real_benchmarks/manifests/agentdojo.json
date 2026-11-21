@@ -205,7 +205,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": true,
       "name": "append_to_file",
-      "operation": "write",
+      "operation": "update",
       "parameters": {
         "content": {
           "authority_sensitive": true,
@@ -1585,7 +1585,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": false,
       "name": "get_webpage",
-      "operation": "web_read",
+      "operation": "observe",
       "parameters": {
         "url": {
           "authority_sensitive": false,
@@ -1620,7 +1620,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": true,
       "name": "invite_user_to_slack",
-      "operation": "invite",
+      "operation": "communicate",
       "parameters": {
         "user": {
           "authority_sensitive": true,
@@ -1686,7 +1686,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": true,
       "name": "post_webpage",
-      "operation": "web_post",
+      "operation": "update",
       "parameters": {
         "content": {
           "authority_sensitive": true,
@@ -2103,7 +2103,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": true,
       "name": "schedule_transaction",
-      "operation": "transfer",
+      "operation": "financial",
       "parameters": {
         "amount": {
           "authority_sensitive": true,
@@ -2520,7 +2520,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": true,
       "name": "send_email",
-      "operation": "send_email",
+      "operation": "communicate",
       "parameters": {
         "attachments": {
           "authority_sensitive": true,
@@ -2644,7 +2644,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": true,
       "name": "send_money",
-      "operation": "transfer",
+      "operation": "financial",
       "parameters": {
         "amount": {
           "authority_sensitive": true,
@@ -2778,7 +2778,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": true,
       "name": "update_password",
-      "operation": "update",
+      "operation": "credential_change",
       "parameters": {
         "password": {
           "authority_sensitive": true,
@@ -2938,7 +2938,7 @@
       "host_adapter": "benchmark.sandbox.invoke",
       "mutates_state": true,
       "name": "update_user_info",
-      "operation": "update",
+      "operation": "credential_change",
       "parameters": {
         "city": {
           "authority_sensitive": true,
