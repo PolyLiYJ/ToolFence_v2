@@ -6,6 +6,9 @@ This project implements a capability-authorisation and transaction-ledger defenc
 
 > This repository contains no non-public data, credentials, or model weights.
 
+![ToolFence Architecture Diagram](image/ToolFence_framework.pdf)
+*Figure: ToolFence runtime and authorisation boundary overview*
+
 ## Overview
 ToolFence enforces bounded, auditable tool execution for LLM agents. It separates policy compilation, runtime monitoring, and capability approval from the agent itself, using:
 - typed tool manifests and fixed trusted catalogues
