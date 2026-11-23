@@ -11,7 +11,6 @@ This project implements a capability-authorisation and transaction-ledger defenc
 <br>
 <em>Figure: ToolFence runtime and authorisation boundary overview</em>
 </p>
-*Figure: ToolFence runtime and authorisation boundary overview*
 
 ## Overview
 ToolFence enforces bounded, auditable tool execution for LLM agents. It separates policy compilation, runtime monitoring, and capability approval from the agent itself, using:
