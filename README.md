@@ -103,7 +103,7 @@ If you use this implementation, please cite:
 ```bibtex
 @misc{li2026toolfencefinegrainedauthorizationsecure,
       title={ToolFence: Fine-Grained Authorization for Secure Tool-Using LLM Agents}, 
-      author={Yanjie Li and Xiangyu He and Xuelong Dai and Bin Xiao},
+      author={Yanjie Li and Yiming Cao and Bin Xiao},
       year={2026},
       eprint={2609.37196},
       archivePrefix={arXiv},
