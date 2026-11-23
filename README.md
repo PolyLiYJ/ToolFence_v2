@@ -6,7 +6,11 @@ This project implements a capability-authorisation and transaction-ledger defenc
 
 > This repository contains no non-public data, credentials, or model weights.
 
-![ToolFence Architecture Diagram](ToolFence_framework.pdf)
+<p align="center">
+<img src="toolfence_framework.png" width="700">
+<br>
+<em>Figure: ToolFence runtime and authorisation boundary overview</em>
+</p>
 *Figure: ToolFence runtime and authorisation boundary overview*
 
 ## Overview
