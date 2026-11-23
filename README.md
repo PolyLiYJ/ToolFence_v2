@@ -1,7 +1,8 @@
 
 # ToolFence
 
-Anonymous source repository for ToolFence, reorganised and modified from the original implementation.
+Anonymous source repository for paper: ''ToolFence: Fine-Grained Authorization for Secure Tool-Using LLM
+Agents`` reorganised and modified from the original implementation.
 This project implements a capability-authorisation and transaction-ledger defence layer for tool-using agents, including a policy compiler, parameter provenance checking, dynamic capability granting, persistent transaction accounting, and targeted test suites.
 
 > This repository contains no non-public data, credentials, or model weights.
@@ -25,18 +26,15 @@ AgentDojo is only used as an external benchmark framework; the core ledger and a
 
 ## Repository Structure
 
-```
-src/toolfence/
-├── guarded_net.py, transaction_net.py       # Workflow stages, transaction ledger, reservations, receipts
-├── semantic/                                # Isolated policy compiler, manifest & parameter provenance checks
-├── hybrid/                                  # Deterministic fast path, dynamic auth, cross-session capability cache
-├── runtime.py, colored_runtime.py           # Agent runtime wrapper
-├── agentdojo_defense.py                     # Adapter for the AgentDojo benchmark
-├── judge/, core/, foundation/               # Isolated reviewer, monitoring and base authorisation primitives
-experiments/                                 # Model-free host sandbox examples
-tests/unit/                                  # Unit regression tests for transactions, provenance, auth, paper mode
-
-```
+| Location | Corresponding Mechanism |
+|----------|-------------------------|
+| `src/toolfence/guarded_net.py`, `transaction_net.py` | Workflow stages, capability & evidence transaction ledger; atomic reservation, trusted receipts, dynamic authorisation proposals, intra-task authorisation |
+| `src/toolfence/semantic/` | Isolated policy compiler, typed tool catalogues & capabilities, concrete parameter and provenance validation |
+| `src/toolfence/hybrid/` | Deterministic fast path, dynamic capability authorisation, cross-session capability shape cache |
+| `src/toolfence/runtime.py`, `colored_runtime.py`, `agentdojo_defense.py` | Agent runtime and final guarded ledger execution boundary |
+| `src/toolfence/judge/`, `core/`, `foundation/` | Isolated reviewer, shared monitoring logic and foundational authorisation structures |
+| `experiments/` | Host sandbox examples that do not depend on models |
+| `tests/unit/` | Regression tests for transactions, parameter provenance, dynamic authorisation and paper-mode behaviour |
 
 ## Installation
 Requires Python 3.10 or newer.
@@ -99,6 +97,20 @@ The published package and source tree contain:
 - no author, institutional, or version-history metadata
 - no host filesystem paths, secrets, persisted ledgers, or private caches
 - only fictional names/emails in test fixtures
+
+## Reference
+If you use this implementation, please cite:
+```bibtex
+@misc{li2026toolfencefinegrainedauthorizationsecure,
+      title={ToolFence: Fine-Grained Authorization for Secure Tool-Using LLM Agents}, 
+      author={Yanjie Li and Xiangyu He and Xuelong Dai and Bin Xiao},
+      year={2026},
+      eprint={2609.37196},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2609.37196}, 
+}
+```
 
 ## License
 
