@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -154,7 +155,10 @@ def build_agentdojo() -> dict:
 
 
 def build_asb() -> dict:
-    sys.path.insert(0, "/home/yjli/Agent/Blueprinting")
+    blueprinting = os.getenv("TOOLFENCE_BLUEPRINTING")
+    if not blueprinting:
+        raise RuntimeError("Set TOOLFENCE_BLUEPRINTING to the Blueprinting source root")
+    sys.path.insert(0, blueprinting)
     from benchmarks.asb_memory import ASBMemoryPoisoningBenchmark
 
     bench = ASBMemoryPoisoningBenchmark(source_root=config.DATA_ROOT / "asb_orig", task_limit_per_agent=2)

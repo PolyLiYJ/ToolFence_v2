@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from collections import defaultdict
 from pathlib import Path
 
@@ -30,8 +31,8 @@ from .runner_common import (
     write_json,
 )
 
-SPLIT_PATH = Path("/home/yjli/Agent/Blueprinting/results/agentdojo_split/cases.jsonl")
-SOURCE_ROOT = Path("/home/yjli/Agent/Blueprinting/data/benchmarks/agentdojo_orig")
+SPLIT_PATH = Path(os.getenv("TOOLFENCE_AGENTDOJO_SPLIT", "data/agentdojo_split/cases.jsonl"))
+SOURCE_ROOT = Path(os.getenv("TOOLFENCE_AGENTDOJO_SRC", "data/benchmarks/agentdojo_orig"))
 
 
 def file_sha256(path: Path) -> str:

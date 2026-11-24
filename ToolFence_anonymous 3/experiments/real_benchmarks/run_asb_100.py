@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -22,8 +23,10 @@ from .runner_common import (
 )
 from .simple_runtime import SimpleRuntime, execute_calls, request_tool_calls, tool_catalog
 
-BLUEPRINTING = Path("/home/yjli/Agent/Blueprinting")
+BLUEPRINTING = Path(os.getenv("TOOLFENCE_BLUEPRINTING", "blueprinting"))
 ASB_ROOT = config.DATA_ROOT / "asb_orig"
+if not BLUEPRINTING.is_dir():
+    raise RuntimeError("Set TOOLFENCE_BLUEPRINTING to the Blueprinting source root")
 if str(BLUEPRINTING) not in sys.path:
     sys.path.insert(0, str(BLUEPRINTING))
 from benchmarks.asb_memory import (  # noqa: E402

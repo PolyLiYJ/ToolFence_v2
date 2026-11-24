@@ -47,6 +47,27 @@ python experiments/run_refinement_cases.py --output output/refinement-example
 
 这些示例不会调用模型或真实外部工具。输出只验证机制行为，不代表提示注入攻击成功率。
 
+## 真实 benchmark 测试
+
+三个真实 benchmark（AgentDojo、ASB、MCPTox）的完整前置条件、模型服务、数据和 smoke/全量命令见 [`experiments/real_benchmarks/README.md`](experiments/real_benchmarks/README.md)。
+
+最短流程：
+
+```bash
+python -m pip install -e '.[test,llm]'
+export PYTHONPATH=src:.
+export OUT=results_real/benchmarks_100
+
+python -m experiments.real_benchmarks.run_agentdojo_100 \
+  --subset-size 100 --model-profile qwen --judges qwen --output-dir "$OUT"
+python -m experiments.real_benchmarks.run_asb_100 \
+  --subset-size 100 --model-profile qwen --judges qwen --output-dir "$OUT"
+python -m experiments.real_benchmarks.run_mcptox_100 \
+  --subset-size 100 --model-profile qwen --judges qwen --output-dir "$OUT"
+```
+
+先跑 smoke 时把 `--subset-size 100` 换成 `--smoke`，并使用独立的 `OUT=results_real/benchmarks_smoke`。AgentDojo/ASB 的外部数据路径和 MCPTox 数据下载见上述 README。
+
 ## 接入可信宿主
 
 1. 根据宿主维护的工具模式建立可信工具目录和 `ToolManifest`。清单必须明确每个工具的操作、效果，以及每个参数是否影响权限。只有经审核的本地读取才能设置 `reviewed_local_read=True`，同时必须保持 `external_disclosure=False` 和 `mutates_state=False`。

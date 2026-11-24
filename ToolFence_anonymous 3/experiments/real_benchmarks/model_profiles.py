@@ -7,15 +7,18 @@ from . import config
 
 PROFILES: dict[str, dict[str, Any]] = {
     "qwen": {
-        "base_url": "http://127.0.0.1:8000/v1",
-        "model": "Qwen/Qwen3-8B",
+        "base_url": os.getenv("TOOLFENCE_QWEN_BASE_URL", config.QWEN_BASE_URL),
+        "model": os.getenv("TOOLFENCE_QWEN_MODEL", config.QWEN_MODEL),
         "planner_backend": "qwen",
         "tool_call_parser": "hermes",
         "max_model_len": 8192,
     },
     "llama70b": {
-        "base_url": "http://127.0.0.1:8002/v1",
-        "model": "/media/ssd3/models/Meta-Llama-3.3-70B-Instruct-AWQ-INT4",
+        "base_url": os.getenv("TOOLFENCE_LLAMA_BASE_URL", "http://127.0.0.1:8002/v1"),
+        "model": os.getenv(
+            "TOOLFENCE_LLAMA_MODEL",
+            "hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4",
+        ),
         "planner_backend": "qwen",
         "tool_call_parser": "llama3_json",
         "max_model_len": 4096,
