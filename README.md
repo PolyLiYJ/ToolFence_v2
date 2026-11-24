@@ -26,6 +26,8 @@ AgentDojo is only used as an external benchmark framework; the core ledger and a
 
 ## Repository Structure
 
+The source tree is under `ToolFence_anonymous 3/`; paths in the table below are relative to that directory.
+
 | Location | Corresponding Mechanism |
 |----------|-------------------------|
 | `src/toolfence/guarded_net.py`, `transaction_net.py` | Workflow stages, capability & evidence transaction ledger; atomic reservation, trusted receipts, dynamic authorisation proposals, intra-task authorisation |
@@ -40,6 +42,8 @@ AgentDojo is only used as an external benchmark framework; the core ledger and a
 Requires Python 3.10 or newer.
 
 ```bash
+cd "ToolFence_anonymous 3"
+
 # editable install with test dependencies
 python -m pip install -e '.[test]'
 
@@ -59,10 +63,51 @@ Full tests require AgentDojo for benchmark boundary integration. Either install 
 
 These examples do not invoke LLMs or real external tools. They validate mechanism behaviour only and do **not** measure prompt injection success rates.
 
-```
+```bash
+cd "ToolFence_anonymous 3"
 python experiments/run_guarded_net_cases.py --output output/guarded-example
 python experiments/run_refinement_cases.py --output output/refinement-example
 ```
+
+## Benchmark Evaluation
+
+The three real benchmarks are **AgentDojo**, **ASB (memory poisoning)**, and **MCPTox**. The runners and reviewed JSON manifests are under `ToolFence_anonymous 3/experiments/real_benchmarks/`.
+
+Full prerequisites, model-server commands, external data paths, smoke tests, and per-benchmark options are documented in the [benchmark README](ToolFence_anonymous%203/experiments/real_benchmarks/README.md).
+
+Quick start:
+
+```bash
+cd "ToolFence_anonymous 3"
+python -m pip install -e '.[test,llm]'
+python -m pip install agentdojo
+export PYTHONPATH=src:.
+export OUT=results_real/benchmarks_100
+
+python -m experiments.real_benchmarks.run_agentdojo_100 \
+  --subset-size 100 --model-profile qwen --judges qwen --output-dir "$OUT"
+python -m experiments.real_benchmarks.run_asb_100 \
+  --subset-size 100 --model-profile qwen --judges qwen --output-dir "$OUT"
+python -m experiments.real_benchmarks.run_mcptox_100 \
+  --subset-size 100 --model-profile qwen --judges qwen --output-dir "$OUT"
+```
+
+Before running the full suite:
+
+- **AgentDojo**: install the external framework and set `TOOLFENCE_AGENTDOJO_SPLIT` and `TOOLFENCE_AGENTDOJO_SRC`.
+- **ASB**: set `TOOLFENCE_BLUEPRINTING` to the Blueprinting source root and place the original ASB data under `data/asb_orig/`.
+- **MCPTox**: download the pinned `response_all.json` to `data/mcptox/response_all.json` (command in the benchmark README).
+- **Models**: the `qwen` profile expects an OpenAI-compatible endpoint on port `8000`; `llama70b` expects port `8002`. Select with `--model-profile qwen|llama70b|both`.
+
+For a quick smoke test, replace `--subset-size 100` with `--smoke` and use a separate output directory, e.g. `OUT=results_real/benchmarks_smoke`. To aggregate results:
+
+```bash
+python -m experiments.real_benchmarks.summarize_results \
+  results_real/benchmarks_100 \
+  --old-dir results_real/final_100_qwen
+```
+
+This writes `summary.csv` and `REPORT.md` under the result directory.
 
 ## Core Concepts
 
